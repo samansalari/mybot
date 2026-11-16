@@ -5,6 +5,7 @@ import {
   MEMORY_INDEX_PATH,
 } from "@rakazo/contracts";
 import { readHistory, searchHistory } from "@rakazo/db";
+import { bestEffort } from "@rakazo/logging";
 import { sharedMemorySaveError } from "./builtin.tool-definition.js";
 import { redactConnectorPayload } from "./connector-safety.js";
 import { MAX_RECALLED_MEMORIES } from "./history-compaction.prompt.js";
@@ -204,17 +205,23 @@ export const memoryTools: ToolHandlers = {
   async save_memory(ctx, call) {
     const { bot, context } = ctx;
     const { args } = call;
-    return call.finish(
-      await ctx.memory.semantic!.save(
-        {
-          content: String(args.content ?? ""),
-          scope: ctx.memory.scope!,
-          botId: bot.id,
-          source: { kind: "durable" },
-        },
-        context,
-      ),
+    const saved = await ctx.memory.semantic!.save(
+      {
+        content: String(args.content ?? ""),
+        scope: ctx.memory.scope!,
+        botId: bot.id,
+        source: { kind: "durable" },
+      },
+      context,
     );
+    // Open Shared memory pages read the Space's pool again when it changes.
+    if (saved.ok && ctx.memory.scope === "shared") {
+      await bestEffort(
+        "signal shared memory change",
+        ctx.deps.events.publishSpaceChange?.(context.spaceId, "memory"),
+      );
+    }
+    return call.finish(saved);
   },
   async forget_memory(ctx, call) {
     const { bot, context } = ctx;

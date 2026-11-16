@@ -16,6 +16,11 @@ const SPACE_CHANGE_PROCEDURES: Record<string, readonly SpaceChangeKind[]> = {
   "threads.endCall": ["runs"],
   "threads.followUp": ["runs"],
   "skills.testRun": ["runs"],
+  // The shared pool a page lists is the connected provider's, so connecting or changing it
+  // changes what is listed.
+  "memory.connectProvider": ["memory"],
+  "memory.updateProvider": ["memory"],
+  "memory.disconnectProvider": ["memory"],
   // Activity leaves out archived bots.
   "bots.restore": ["runs", "routines"],
   "bots.remove": ["runs", "routines"],

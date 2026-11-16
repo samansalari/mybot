@@ -50,12 +50,14 @@ describe("memory provider descriptors", () => {
       "serenity",
       "honcho",
       "hindsight",
+      "mem0",
     ]);
     expect(descriptors.map((entry) => entry.displayName)).toEqual([
       "Supermemory",
       "Serenity",
       "Honcho",
       "Hindsight",
+      "Mem0",
     ]);
   });
 
@@ -130,6 +132,25 @@ describe("memory provider descriptors", () => {
       "Self-hosted (http://10.0.0.8:8888)",
     );
     expect(label("not-in-this-build", {})).toBeUndefined();
+  });
+
+  it("asks Mem0 for one key, with nothing else to configure", () => {
+    expect(memoryProviderConnectionLabel("mem0", {})).toBe("Mem0 Cloud");
+
+    const connecting = form("mem0");
+    expect(connecting.shown("apiKey")).toMatchObject({ label: "API key", placeholder: "m0-…" });
+    expect(connecting.ready()).toBe(false);
+    expect(connecting.fill({ apiKey: "short" }).ready()).toBe(false);
+    expect(connecting.fill({ apiKey: " m0-test-key-1234 " }).ready()).toBe(true);
+    expect(connecting.sends()).toEqual({
+      settings: {},
+      credentials: { apiKey: "m0-test-key-1234" },
+    });
+
+    // A saved key stays when the form is submitted without one.
+    const saved = form("mem0", {});
+    expect(saved.keepsSecrets()).toBe(true);
+    expect(saved.ready()).toBe(true);
   });
 
   it("asks one provider for a key named after where it connects", () => {

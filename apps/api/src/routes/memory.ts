@@ -19,6 +19,9 @@ import {
 } from "../memory-provider-config.js";
 import type { RouterContext } from "./context.js";
 
+/** The most facts the Shared memory page lists from the connected provider. */
+const MAX_SHARED_FACTS = 100;
+
 export function memoryRoutes(ctx: RouterContext) {
   const { deps, repos, taughtSkills, agentSkills, authed } = ctx;
   return {
@@ -139,6 +142,32 @@ export function memoryRoutes(ctx: RouterContext) {
         return config ? serializeSpaceMemoryConfig(config) : null;
       }),
       providers: authed.memory.providers.handler(() => memoryProviderDescriptors()),
+      sharedFacts: authed.memory.sharedFacts.handler(async ({ context }) => {
+        const configured = await deps.memoryProviders.resolve(context.actor.spaceId);
+        const { provider } = configured ?? {};
+        if (!provider?.listShared) return null;
+        const listed = await provider.listShared(
+          { limit: MAX_SHARED_FACTS },
+          {
+            operationId: "mem",
+            traceId: "mem",
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            signal: context.signal ?? new AbortController().signal,
+          },
+        );
+        if (!listed.ok) throw new Error(listed.error);
+        const { id } = provider.describe();
+        return {
+          // The name comes from the provider's own descriptor, never from this route.
+          provider: memoryProviderDescriptors().find((entry) => entry.id === id)?.displayName ?? id,
+          facts: listed.value.map(({ id: factId, memory, updatedAt }) => ({
+            ...(factId ? { id: factId } : {}),
+            memory,
+            ...(updatedAt ? { updatedAt } : {}),
+          })),
+        };
+      }),
       connectProvider: authed.memory.connectProvider.handler(async ({ context, input }) =>
         persistMemoryProviderConfig(deps, context.actor, input),
       ),

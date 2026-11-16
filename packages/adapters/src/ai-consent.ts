@@ -19,6 +19,7 @@ const PRIVACY_URLS: Record<string, string> = {
   supermemory: "https://supermemory.ai/privacy",
   honcho: "https://app.honcho.dev/privacy",
   hindsight: "https://vectorize.io/privacy",
+  mem0: "https://mem0.ai/privacy-policy",
 };
 
 /** Never expose endpoint paths, query parameters, user info, or credentials in a disclosure. */
@@ -55,6 +56,7 @@ function recipientName(provider: string, use: AiDataUse) {
     if (provider === "supermemory") return "Supermemory";
     if (provider === "honcho") return "Honcho";
     if (provider === "hindsight") return "Hindsight";
+    if (provider === "mem0") return "Mem0";
     return provider;
   }
   if (provider === "cursor") return "Cursor";

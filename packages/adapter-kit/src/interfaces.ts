@@ -74,6 +74,7 @@ import type {
   SemanticMemoryCapabilities,
   SemanticMemoryConversationRequest,
   SemanticMemoryForgetRequest,
+  SemanticMemoryListSharedRequest,
   SemanticMemoryPurgeHistoryRequest,
   SemanticMemoryRecallRequest,
   SemanticMemoryReflectRequest,
@@ -377,6 +378,14 @@ export interface SemanticMemoryProvider {
     request: SemanticMemoryPurgeHistoryRequest,
     context: AdapterContext,
   ): Promise<SemanticMemoryResponse>;
+  /**
+   * Optional: what the Space's shared pool holds, for people to read. Providers that cannot
+   * list their memory omit this.
+   */
+  listShared?(
+    request: SemanticMemoryListSharedRequest,
+    context: AdapterContext,
+  ): Promise<SemanticMemoryResponse<SemanticMemoryResult[]>>;
   /** Optional durable forget. Providers without a forget verb omit this. */
   forget?(
     request: SemanticMemoryForgetRequest,

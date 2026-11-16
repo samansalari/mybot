@@ -96,6 +96,7 @@ const VENDORS = [
   "honcho",
   "hindsight",
   "serenity",
+  "mem0",
   // Voice
   "elevenlabs",
   "cartesia",

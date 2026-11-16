@@ -19,6 +19,12 @@ import {
 } from "./honcho-memory-provider.js";
 import { honchoMemorySettings } from "./honcho-memory-settings.js";
 import { revalidateLocalServiceSettings } from "./local-service-endpoint.js";
+import {
+  createMem0Provider,
+  MEM0_PROVIDER_ID,
+  prepareMem0Connection,
+} from "./mem0-memory-provider.js";
+import { mem0MemorySettings } from "./mem0-memory-settings.js";
 import type { SettingsMemoryProvider } from "./memory-provider-descriptor.js";
 import { normalizeSerenityEndpoint } from "./serenity-client.js";
 import {
@@ -170,6 +176,19 @@ const MEMORY_PROVIDER_ADAPTERS: ReadonlyMap<string, MemoryProviderAdapter> = new
       prepare: prepareHindsightConnection,
       create: createHindsightProvider,
       credentialTarget: hindsightTarget,
+    },
+  ],
+  [
+    MEM0_PROVIDER_ID,
+    {
+      settings: mem0MemorySettings,
+      requiresPrivateEndpoint: () => false,
+      prepare: (_settings: Record<string, string>, credentials: Record<string, string>) =>
+        prepareMem0Connection(credentials),
+      create: (_settings: Record<string, string>, credentials: Record<string, string>) =>
+        createMem0Provider(credentials),
+      // The hosted service is the only place a key can go.
+      credentialTarget: () => "cloud",
     },
   ],
 ]);

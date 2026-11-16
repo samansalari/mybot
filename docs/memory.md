@@ -61,6 +61,10 @@ their notes. In **Settings → Memory**, choose **Connect memory provider**:
   their own bot memory to answer a question by combining what it knows; reflection does not query
   the Space's shared bank. Shared facts remain available through recall. Summaries of long chats stay in
   Rakazo: Hindsight learns from the conversation itself, not from summaries of it.
+- **Mem0**: its cloud service, with an API key. Bots recall from it before every run, and what they
+  save goes there as written. What the space's bots share also appears under **Shared memory**,
+  newest first, and updates when a bot saves; edit or delete those facts in Mem0. Summaries of
+  long chats are left to Mem0 to extract facts from. Bots can't forget a single memory here.
 
 To change a connected provider's settings, choose **Edit**. You only need to enter the key again
 when you change where it connects or what it can read.

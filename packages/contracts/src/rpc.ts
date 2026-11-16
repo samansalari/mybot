@@ -292,7 +292,7 @@ const threadSendWithRoutinesInput = threadSendFields.safeExtend({
 });
 
 /** What a Space change signal tells apps to read again; each is a `notifications.subscribe` frame. */
-export const SpaceChangeKind = z.enum(["computerUpdates", "runs", "routines"]);
+export const SpaceChangeKind = z.enum(["computerUpdates", "runs", "routines", "memory"]);
 export type SpaceChangeKind = z.infer<typeof SpaceChangeKind>;
 
 const spaceName = z.string().trim().min(1).max(60);
@@ -927,6 +927,21 @@ export const appContract = {
     providerConfig: oc.output(SpaceMemoryConfigSchema.nullable()),
     /** The providers a Space can connect, with the settings form each one asks for. */
     providers: oc.output(z.array(MemoryProviderDescriptorSchema)),
+    /** What the connected provider holds in the Space's shared pool, for people to read. */
+    sharedFacts: oc.output(
+      z
+        .object({
+          provider: z.string(),
+          facts: z.array(
+            z.object({
+              id: z.string().optional(),
+              memory: z.string(),
+              updatedAt: z.string().optional(),
+            }),
+          ),
+        })
+        .nullable(),
+    ),
     connectProvider: oc
       .input(
         z.object({

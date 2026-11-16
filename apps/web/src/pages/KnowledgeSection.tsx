@@ -16,6 +16,7 @@ import {
 } from "../components/integrations/space-availability";
 import { downloadArtifactBytes } from "../lib/artifact-open";
 import { useSave, useSpaceQueries } from "../lib/query";
+import { formatRelativeTime } from "../lib/relative-time";
 import { useSpaceRpc } from "../lib/space-rpc";
 
 const NO_DOCS: MemoryDocument[] = [];
@@ -58,7 +59,39 @@ export function SpaceMemorySection() {
       <div className="mt-3">
         <MemoryDocumentList input={{ scope: "user" }} testId="space-memory-list" />
       </div>
+      <ProviderSharedFacts />
     </section>
+  );
+}
+
+/** What the connected memory provider holds for the whole space; shown only when it holds any. */
+function ProviderSharedFacts() {
+  const queries = useSpaceQueries();
+  // Bots save as they run; the space-change signal and every open read the pool again.
+  const { data } = useQuery({
+    ...queries.memory.sharedFacts.queryOptions(),
+    refetchOnMount: "always",
+  });
+  if (!data || data.facts.length === 0) return null;
+  return (
+    <div className="mt-4" data-testid="space-memory-provider-facts">
+      <SectionHeading variant="label">{data.provider}</SectionHeading>
+      <ul className="mt-2 divide-y divide-border">
+        {data.facts.map((fact, index) => (
+          <li
+            key={fact.id ?? index}
+            className="flex items-baseline justify-between gap-3 py-2 text-body-sm"
+          >
+            <span className="min-w-0 whitespace-pre-wrap break-words">{fact.memory}</span>
+            {fact.updatedAt ? (
+              <span className="shrink-0 text-muted-foreground">
+                {formatRelativeTime(fact.updatedAt)}
+              </span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

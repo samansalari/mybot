@@ -476,6 +476,11 @@ export interface SemanticMemoryResult {
   external?: true;
 }
 
+/** What the Space's shared pool holds, newest first, for people to read. */
+export interface SemanticMemoryListSharedRequest {
+  limit: number;
+}
+
 export interface SemanticMemoryForgetRequest {
   id: string;
   /** Same scope as recall: providers delete only facts inside these namespaces. */
