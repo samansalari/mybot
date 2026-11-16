@@ -1,0 +1,14 @@
+[Unit]
+Description=Run Rakazo Fork Upstream Synchronisation Every 6 Hours
+Documentation=https://github.com/samansalari/mybot
+
+[Timer]
+# Schedule execution every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)
+OnCalendar=*-*-* 00,06,12,18:00:00
+# Run immediately on boot if a scheduled run was missed while the system was down
+Persistent=true
+# Prevent timer stampedes
+AccuracySec=1m
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,32 @@
+[Unit]
+Description=Rakazo Fork Upstream Synchronisation Service
+Documentation=https://github.com/samansalari/mybot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=mybot-sync
+Group=mybot-sync
+
+# Environment configuration (stored outside git repository)
+EnvironmentFile=-/etc/mybot-sync/config.env
+
+# Path to the repository and synchronization script
+WorkingDirectory=/opt/mybot
+ExecStart=/opt/mybot/scripts/upstream-sync.sh --run
+
+# Security hardening and sandboxing
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/opt/mybot /var/lib/mybot-sync /var/log/mybot-sync
+
+# Resource limits
+TimeoutStartSec=1200
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
