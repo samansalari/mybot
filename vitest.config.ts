@@ -21,7 +21,7 @@ const include = [
 // the rest share one per worker, which skips re-importing the same modules for every file.
 // Database runs give every file its own database, so they never share.
 const mutatesSharedState =
-  /vi\.(mock|doMock|stubGlobal|stubEnv|resetModules|useFakeTimers|spyOn)\(|globalThis\.\w+ *=[^=]|(globalThis|global|window)\[[^\]]+\] *=[^=]|process\.env(\.\w+|\[[^\]]+\]) *=[^=]|delete process\.env|defineProperty\((globalThis|global|window|document|navigator|process)|process\.chdir|@vitest-environment/;
+  /vi\.(mock|doMock|stubGlobal|stubEnv|resetModules|useFakeTimers|spyOn)\(|globalThis\.\w+ *=[^=]|(globalThis|global|window)\[[^\]]+\] *=[^=]|process\.env(\.\w+|\[[^\]]+\]) *=[^=]|delete process\.env|defineProperty\((globalThis|global|window|document|navigator|process)|process\.chdir|@vitest-environment|installLogger\(|databaseOutage\./;
 // Package scripts run from their own folder, so paths resolve from the repo root, not the cwd.
 const root = path.dirname(fileURLToPath(import.meta.url));
 const isolated = include

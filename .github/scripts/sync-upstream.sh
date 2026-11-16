@@ -121,7 +121,18 @@ if [[ $MERGE_STATUS -ne 0 ]]; then
   
   # Checkout upstream commits onto the integration branch so PR compares upstream against local main
   git checkout -B "$INTEGRATION_BRANCH" "upstream/$UPSTREAM_BRANCH"
-  git push -f origin "$INTEGRATION_BRANCH"
+  
+  # Safe non-destructive push of integration branch
+  if git rev-parse --verify "origin/$INTEGRATION_BRANCH" >/dev/null 2>&1; then
+    git merge --no-ff "origin/$INTEGRATION_BRANCH" -m "chore(sync): preserve existing integration branch work" || {
+      git merge --abort || true
+    }
+  fi
+  if ! git push origin "$INTEGRATION_BRANCH"; then
+    git fetch origin "$INTEGRATION_BRANCH"
+    git merge -m "chore(sync): reconcile remote $INTEGRATION_BRANCH" "origin/$INTEGRATION_BRANCH" || git merge --abort
+    git push origin "$INTEGRATION_BRANCH"
+  fi
   
   set_output "has_conflicts" "true"
   set_output "need_validation" "false"
@@ -165,10 +176,20 @@ EOF
     EXISTING_PR=$(gh pr list -R "$REPO_TARGET" --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || true)
     if [[ -n "$EXISTING_PR" ]]; then
       echo "Updating existing PR #$EXISTING_PR with conflict details..."
-      gh pr edit "$EXISTING_PR" -R "$REPO_TARGET" --title "$PR_TITLE" --body "$PR_BODY"
+      if ! gh pr edit "$EXISTING_PR" -R "$REPO_TARGET" --title "$PR_TITLE" --body "$PR_BODY"; then
+        echo "::error::Failed to update conflict PR #$EXISTING_PR on $REPO_TARGET. Token may lack pull-requests: write permission."
+        echo "The integration branch '$INTEGRATION_BRANCH' was safely pushed to origin and is preserved."
+        echo "Update manually at: https://github.com/$REPO_TARGET/pull/$EXISTING_PR"
+        exit 1
+      fi
     else
       echo "Opening draft PR for conflict resolution..."
-      gh pr create -R "$REPO_TARGET" --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --title "$PR_TITLE" --body "$PR_BODY" --draft
+      if ! gh pr create -R "$REPO_TARGET" --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --title "$PR_TITLE" --body "$PR_BODY" --draft; then
+        echo "::error::Failed to create conflict resolution PR on $REPO_TARGET. Token may lack pull-requests: write permission."
+        echo "The integration branch '$INTEGRATION_BRANCH' was safely pushed to origin and is preserved."
+        echo "Open manually at: https://github.com/$REPO_TARGET/pull/new/$INTEGRATION_BRANCH"
+        exit 1
+      fi
     fi
   fi
   exit 0
