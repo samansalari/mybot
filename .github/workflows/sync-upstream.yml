@@ -1,0 +1,66 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    # Run automatically every 6 hours
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync with upstream
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Synchronise with upstream
+        id: sync
+        run: bash .github/scripts/sync-upstream.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_REPO: https://github.com/elie222/rakazo.git
+          UPSTREAM_BRANCH: main
+          TARGET_BRANCH: main
+          INTEGRATION_BRANCH: sync/upstream-integration
+
+      - name: Setup workspace for validation
+        if: steps.sync.outputs.need_validation == 'true'
+        uses: ./.github/actions/setup-workspace
+
+      - name: Validate merged code
+        id: validate
+        if: steps.sync.outputs.need_validation == 'true'
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          echo "Running repository checks..."
+          pnpm checks
+          echo "Running typechecks..."
+          pnpm check
+          echo "Running unit tests..."
+          pnpm test
+
+      - name: Finalize integration pull request
+        if: steps.sync.outputs.need_validation == 'true'
+        run: bash .github/scripts/finalize-integration-pr.sh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATION_OUTCOME: ${{ steps.validate.outcome }}
+          TARGET_BRANCH: main
+          INTEGRATION_BRANCH: sync/upstream-integration
+          UPSTREAM_SHA: ${{ steps.sync.outputs.upstream_sha }}
+          LOCAL_SHA: ${{ steps.sync.outputs.local_sha }}
