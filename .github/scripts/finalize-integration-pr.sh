@@ -6,12 +6,14 @@ INTEGRATION_BRANCH="${INTEGRATION_BRANCH:-sync/upstream-integration}"
 VALIDATION_OUTCOME="${VALIDATION_OUTCOME:-failure}"
 UPSTREAM_SHA="${UPSTREAM_SHA:-unknown}"
 LOCAL_SHA="${LOCAL_SHA:-unknown}"
+REPO_TARGET="${GITHUB_REPOSITORY:-samansalari/mybot}"
 
 echo "=========================================="
 echo " Finalizing Integration PR"
 echo " Integration branch: $INTEGRATION_BRANCH"
 echo " Target branch:      $TARGET_BRANCH"
 echo " Validation outcome: $VALIDATION_OUTCOME"
+echo " Repository:         $REPO_TARGET"
 echo "=========================================="
 
 # Push integration branch with clean merge commit
@@ -22,7 +24,7 @@ if ! command -v gh >/dev/null 2>&1 || [[ -z "${GH_TOKEN:-}" ]]; then
   exit 0
 fi
 
-EXISTING_PR=$(gh pr list --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || true)
+EXISTING_PR=$(gh pr list -R "$REPO_TARGET" --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || true)
 
 if [[ "$VALIDATION_OUTCOME" == "success" ]]; then
   PR_TITLE="chore(sync): integrate upstream changes into $TARGET_BRANCH (validated)"
@@ -34,18 +36,18 @@ Automatic synchronization merged upstream changes cleanly and verified them agai
 ### Summary
 - **Upstream commit:** \`$UPSTREAM_SHA\`
 - **Local base commit:** \`$LOCAL_SHA\`
-- **Validation:** Passed (\`pnpm checks\`, \`pnpm check\`, \`pnpm test\`)
+- **Validation:** Passed (\`pnpm checks\`, \`pnpm check\`, and basic unit tests)
 
-This pull request is ready for review and merge.
+This pull request is ready for review and merge. Full CI checks will run against this PR.
 EOF
 )
   if [[ -n "$EXISTING_PR" ]]; then
     echo "Updating existing PR #$EXISTING_PR..."
-    gh pr edit "$EXISTING_PR" --title "$PR_TITLE" --body "$PR_BODY"
-    gh pr ready "$EXISTING_PR" || true
+    gh pr edit "$EXISTING_PR" -R "$REPO_TARGET" --title "$PR_TITLE" --body "$PR_BODY"
+    gh pr ready "$EXISTING_PR" -R "$REPO_TARGET" || true
   else
     echo "Creating validated PR for $TARGET_BRANCH..."
-    gh pr create --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --title "$PR_TITLE" --body "$PR_BODY"
+    gh pr create -R "$REPO_TARGET" --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --title "$PR_TITLE" --body "$PR_BODY"
   fi
 else
   PR_TITLE="chore(sync): integrate upstream changes (validation failed)"
@@ -64,9 +66,9 @@ EOF
 )
   if [[ -n "$EXISTING_PR" ]]; then
     echo "Updating existing PR #$EXISTING_PR..."
-    gh pr edit "$EXISTING_PR" --title "$PR_TITLE" --body "$PR_BODY"
+    gh pr edit "$EXISTING_PR" -R "$REPO_TARGET" --title "$PR_TITLE" --body "$PR_BODY"
   else
     echo "Creating draft PR for unverified integration..."
-    gh pr create --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --title "$PR_TITLE" --body "$PR_BODY" --draft
+    gh pr create -R "$REPO_TARGET" --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --title "$PR_TITLE" --body "$PR_BODY" --draft
   fi
 fi

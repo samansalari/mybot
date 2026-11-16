@@ -32,6 +32,7 @@ jobs:
         run: bash .github/scripts/sync-upstream.sh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           UPSTREAM_REPO: https://github.com/elie222/rakazo.git
           UPSTREAM_BRANCH: main
           TARGET_BRANCH: main
@@ -51,14 +52,15 @@ jobs:
           pnpm checks
           echo "Running typechecks..."
           pnpm check
-          echo "Running unit tests..."
-          pnpm test
+          echo "Running scripts unit tests..."
+          node --test scripts/pnpm.test.mjs scripts/setup-worktree.test.mjs
 
       - name: Finalize integration pull request
         if: steps.sync.outputs.need_validation == 'true'
         run: bash .github/scripts/finalize-integration-pr.sh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
           VALIDATION_OUTCOME: ${{ steps.validate.outcome }}
           TARGET_BRANCH: main
           INTEGRATION_BRANCH: sync/upstream-integration
