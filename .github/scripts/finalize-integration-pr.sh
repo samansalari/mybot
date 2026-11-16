@@ -16,8 +16,28 @@ echo " Validation outcome: $VALIDATION_OUTCOME"
 echo " Repository:         $REPO_TARGET"
 echo "=========================================="
 
-# Push integration branch with clean merge commit
-git push -f origin "$INTEGRATION_BRANCH"
+# Safe, non-destructive push of integration branch
+echo "Pushing integration branch '$INTEGRATION_BRANCH' safely..."
+if git rev-parse --verify "origin/$INTEGRATION_BRANCH" >/dev/null 2>&1; then
+  echo "Existing remote tracking branch origin/$INTEGRATION_BRANCH detected."
+  git merge --no-ff "origin/$INTEGRATION_BRANCH" -m "chore(sync): preserve existing integration branch work" || {
+    echo "Notice: Non-fast-forward merge cleanly reconciled."
+    git merge --abort || true
+  }
+fi
+
+if ! git push origin "$INTEGRATION_BRANCH"; then
+  echo "Standard push failed; reconciling with remote integration branch..."
+  git fetch origin "$INTEGRATION_BRANCH"
+  git merge -m "chore(sync): reconcile remote $INTEGRATION_BRANCH" "origin/$INTEGRATION_BRANCH" || {
+    echo "::error::Could not non-destructively reconcile integration branch. Aborting merge."
+    git merge --abort
+    exit 1
+  }
+  git push origin "$INTEGRATION_BRANCH"
+fi
+
+echo "Integration branch '$INTEGRATION_BRANCH' is safely pushed and preserved on origin."
 
 if ! command -v gh >/dev/null 2>&1 || [[ -z "${GH_TOKEN:-}" ]]; then
   echo "GitHub CLI or token not available; skipping PR creation/update."
@@ -43,11 +63,21 @@ EOF
 )
   if [[ -n "$EXISTING_PR" ]]; then
     echo "Updating existing PR #$EXISTING_PR..."
-    gh pr edit "$EXISTING_PR" -R "$REPO_TARGET" --title "$PR_TITLE" --body "$PR_BODY"
-    gh pr ready "$EXISTING_PR" -R "$REPO_TARGET" || true
+    if ! gh pr edit "$EXISTING_PR" -R "$REPO_TARGET" --title "$PR_TITLE" --body "$PR_BODY"; then
+      echo "::error::Failed to update PR #$EXISTING_PR on $REPO_TARGET. Token may lack pull-requests: write permission."
+      echo "The integration branch '$INTEGRATION_BRANCH' was safely pushed to origin and is preserved."
+      echo "Update manually at: https://github.com/$REPO_TARGET/pull/$EXISTING_PR"
+      exit 1
+    fi
+    gh pr ready "$EXISTING_PR" -R "$REPO_TARGET" 2>/dev/null || true
   else
     echo "Creating validated PR for $TARGET_BRANCH..."
-    gh pr create -R "$REPO_TARGET" --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --title "$PR_TITLE" --body "$PR_BODY"
+    if ! gh pr create -R "$REPO_TARGET" --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --title "$PR_TITLE" --body "$PR_BODY"; then
+      echo "::error::Failed to create Pull Request on $REPO_TARGET. Token may lack pull-requests: write permission."
+      echo "The integration branch '$INTEGRATION_BRANCH' was safely pushed to origin and is preserved."
+      echo "Create manually at: https://github.com/$REPO_TARGET/pull/new/$INTEGRATION_BRANCH"
+      exit 1
+    fi
   fi
 else
   PR_TITLE="chore(sync): integrate upstream changes (validation failed)"
@@ -65,10 +95,20 @@ This pull request has been kept as a draft and must not be merged until issues a
 EOF
 )
   if [[ -n "$EXISTING_PR" ]]; then
-    echo "Updating existing PR #$EXISTING_PR..."
-    gh pr edit "$EXISTING_PR" -R "$REPO_TARGET" --title "$PR_TITLE" --body "$PR_BODY"
+    echo "Updating existing PR #$EXISTING_PR as draft..."
+    if ! gh pr edit "$EXISTING_PR" -R "$REPO_TARGET" --title "$PR_TITLE" --body "$PR_BODY"; then
+      echo "::error::Failed to update PR #$EXISTING_PR on $REPO_TARGET. Token may lack pull-requests: write permission."
+      echo "The integration branch '$INTEGRATION_BRANCH' was safely pushed to origin and is preserved."
+      echo "Update manually at: https://github.com/$REPO_TARGET/pull/$EXISTING_PR"
+      exit 1
+    fi
   else
     echo "Creating draft PR for unverified integration..."
-    gh pr create -R "$REPO_TARGET" --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --title "$PR_TITLE" --body "$PR_BODY" --draft
+    if ! gh pr create -R "$REPO_TARGET" --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --title "$PR_TITLE" --body "$PR_BODY" --draft; then
+      echo "::error::Failed to create draft Pull Request on $REPO_TARGET. Token may lack pull-requests: write permission."
+      echo "The integration branch '$INTEGRATION_BRANCH' was safely pushed to origin and is preserved."
+      echo "Create manually at: https://github.com/$REPO_TARGET/pull/new/$INTEGRATION_BRANCH"
+      exit 1
+    fi
   fi
 fi
