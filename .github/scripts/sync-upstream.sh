@@ -5,12 +5,14 @@ UPSTREAM_REPO="${UPSTREAM_REPO:-https://github.com/elie222/rakazo.git}"
 UPSTREAM_BRANCH="${UPSTREAM_BRANCH:-main}"
 TARGET_BRANCH="${TARGET_BRANCH:-main}"
 INTEGRATION_BRANCH="${INTEGRATION_BRANCH:-sync/upstream-integration}"
+REPO_TARGET="${GITHUB_REPOSITORY:-samansalari/mybot}"
 
 echo "=========================================="
 echo " Starting Upstream Synchronisation"
 echo " Upstream:    $UPSTREAM_REPO ($UPSTREAM_BRANCH)"
 echo " Target:      origin/$TARGET_BRANCH"
 echo " Integration: $INTEGRATION_BRANCH"
+echo " Repository:  $REPO_TARGET"
 echo "=========================================="
 
 # Ensure git credentials & identity
@@ -83,10 +85,10 @@ if [[ "$LOCAL_SHA" == "$MERGE_BASE" ]]; then
   
   # Close obsolete integration PR if open
   if command -v gh >/dev/null 2>&1 && [[ -n "${GH_TOKEN:-}" ]]; then
-    EXISTING_PR=$(gh pr list --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || true)
+    EXISTING_PR=$(gh pr list -R "$REPO_TARGET" --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || true)
     if [[ -n "$EXISTING_PR" ]]; then
       echo "Closing obsolete integration PR #$EXISTING_PR..."
-      gh pr close "$EXISTING_PR" --comment "Auto-closed: $TARGET_BRANCH was fast-forwarded directly to upstream commit $UPSTREAM_SHA." || true
+      gh pr close "$EXISTING_PR" -R "$REPO_TARGET" --comment "Auto-closed: $TARGET_BRANCH was fast-forwarded directly to upstream commit $UPSTREAM_SHA." || true
     fi
   fi
   
@@ -160,13 +162,13 @@ $CONFLICT_FILES
 4. Merge or fast-forward to \`$TARGET_BRANCH\` and push.
 EOF
 )
-    EXISTING_PR=$(gh pr list --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || true)
+    EXISTING_PR=$(gh pr list -R "$REPO_TARGET" --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --state open --json number --jq '.[0].number' 2>/dev/null || true)
     if [[ -n "$EXISTING_PR" ]]; then
       echo "Updating existing PR #$EXISTING_PR with conflict details..."
-      gh pr edit "$EXISTING_PR" --title "$PR_TITLE" --body "$PR_BODY"
+      gh pr edit "$EXISTING_PR" -R "$REPO_TARGET" --title "$PR_TITLE" --body "$PR_BODY"
     else
       echo "Opening draft PR for conflict resolution..."
-      gh pr create --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --title "$PR_TITLE" --body "$PR_BODY" --draft
+      gh pr create -R "$REPO_TARGET" --base "$TARGET_BRANCH" --head "$INTEGRATION_BRANCH" --title "$PR_TITLE" --body "$PR_BODY" --draft
     fi
   fi
   exit 0
